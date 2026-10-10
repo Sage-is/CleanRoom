@@ -1,0 +1,20 @@
+# Hidden-artifact allowlist: deny dotfiles and dotfolders everywhere in the
+# repo unless they are intentionally shared and explicitly included below.
+.*
+!/.gitignore
+!/.gitattributes
+!/.python-version
+!/.gitflow
+!/.todoscope-exclude.csv
+!/.pre-commit-config.yaml
+!/.gitleaks.toml
+!/.github/
+!/.github/**
+!.*.example
+
+# Python build and runtime junk. .venv is already covered by the .* rule.
+__pycache__/
+*.py[cod]
+*.egg-info/
+/build/
+/dist/

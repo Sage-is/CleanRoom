@@ -1,0 +1,134 @@
+name: Nightly
+
+# Engine and live lanes that are too slow, too flaky or too network-bound for
+# every push. A failure here turns this workflow red and sends the failure
+# notification; it never blocks a merge, because no branch protection requires
+# it. A red nightly is a signal to read. Hopper and IDA never run here: they
+# are licensed GUI apps, tested by hand on a Mac (`make test_engines ENGINES=...`).
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  engines:
+    name: Engines (Ghidra, jadx, Playwright)
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.12"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install 3.12
+
+      # Ghidra 12 needs JDK 21; pyghidra finds it through JAVA_HOME.
+      - name: Install JDK 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # The PUBLIC zip is about 400 MB, so it is cached by asset name: a new
+      # Ghidra release changes the name and misses the cache on purpose.
+      - name: Resolve latest Ghidra asset
+        id: ghidra
+        run: |
+          name="$(gh api repos/NationalSecurityAgency/ghidra/releases/latest \
+            --jq '[.assets[].name | select(startswith("ghidra_") and contains("_PUBLIC_") and endswith(".zip"))][0]')"
+          test -n "$name" && test "$name" != "null"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Ghidra zip
+        id: ghidra-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/engines/ghidra
+          key: ghidra-${{ steps.ghidra.outputs.name }}
+
+      - name: Download Ghidra
+        if: steps.ghidra-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/engines/ghidra
+          gh release download --repo NationalSecurityAgency/ghidra \
+            --pattern 'ghidra_*_PUBLIC_*.zip' --dir ~/engines/ghidra
+
+      - name: Install Ghidra
+        run: |
+          unzip -q ~/engines/ghidra/"${{ steps.ghidra.outputs.name }}" -d "$RUNNER_TEMP/ghidra"
+          dir="$(ls -d "$RUNNER_TEMP"/ghidra/ghidra_*_PUBLIC)"
+          echo "GHIDRA_INSTALL_DIR=$dir" >> "$GITHUB_ENV"
+          echo "GHIDRA_INSTALL_DIR=$dir"
+
+      # jadx's release zip is flat: bin/ and lib/ at the top level.
+      - name: Resolve latest jadx asset
+        id: jadx
+        run: |
+          name="$(gh api repos/skylot/jadx/releases/latest \
+            --jq '[.assets[].name | select(startswith("jadx-") and (startswith("jadx-gui") | not) and endswith(".zip"))][0]')"
+          test -n "$name" && test "$name" != "null"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Cache jadx zip
+        id: jadx-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/engines/jadx
+          key: jadx-${{ steps.jadx.outputs.name }}
+
+      - name: Download jadx
+        if: steps.jadx-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/engines/jadx
+          gh release download --repo skylot/jadx \
+            --pattern 'jadx-[0-9]*.zip' --dir ~/engines/jadx
+
+      - name: Install jadx
+        run: |
+          unzip -q ~/engines/jadx/"${{ steps.jadx.outputs.name }}" -d "$RUNNER_TEMP/jadx"
+          echo "$RUNNER_TEMP/jadx/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/jadx/bin/jadx" --version
+
+      - name: Sync
+        run: uv sync --locked --all-extras
+
+      - name: Install Chromium
+        run: uv run playwright install --with-deps chromium
+
+      # A missing engine is a failure here, not a skip: that is the point.
+      # `live` tests belong to the macOS lane below.
+      - name: Test with engines required
+        env:
+          CLEANROOM_REQUIRE_ENGINES: ghidra,jadx,playwright
+        run: uv run pytest -m "not live" -q
+
+  live:
+    name: Live (macOS)
+    runs-on: macos-latest
+    env:
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Sync
+        run: uv sync --locked --all-extras
+
+      - name: Live tests
+        run: uv run pytest -m live -q
+
+      # The published package, as a user gets it: proves the PyPI release and
+      # the uvx launcher path the Homebrew formula relies on.
+      - name: Doctor from PyPI
+        run: uvx --from cleanroom-re cleanroom doctor

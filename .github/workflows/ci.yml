@@ -1,0 +1,162 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, master]
+  pull_request:
+  workflow_call:
+
+# Under workflow_call, github.workflow is the caller's name, so a Release run's
+# CI never shares a group with the push-triggered CI on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Branch protection on develop and master requires the checks `lint` and
+  # `test`; GitHub matches the job names below.
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # scan_history reads the whole history.
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install 3.12
+
+      - name: Lockfile matches pyproject
+        run: uv lock --check
+
+      - name: Sync
+        run: uv sync --locked --all-extras
+
+      - name: Ruff check
+        run: uv run ruff check .
+
+      - name: Ruff format
+        run: uv run ruff format --check .
+
+      # The gitleaks hook is a Go build; caching the hook environments keeps
+      # this step to seconds after the first run.
+      - name: Cache pre-commit environments
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - name: Pre-commit hooks
+        run: uv run pre-commit run --all-files --show-diff-on-failure
+
+      # The gitleaks hook scans the staged diff, which is empty on a fresh
+      # checkout, so CI scans the whole tree and the full history itself with
+      # the gitleaks version the hook pins.
+      - name: Install gitleaks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download v8.30.1 --repo gitleaks/gitleaks \
+            --pattern 'gitleaks_*_linux_x64.tar.gz' --output "$RUNNER_TEMP/gitleaks.tar.gz"
+          sudo tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Secrets scan, tree and history
+        run: make scan_tree scan_history
+
+      - name: Line budget and NOTICE sync
+        run: uv run pytest tests/test_budget.py tests/test_notice.py -q
+
+      - name: Build
+        run: uv build
+
+      # The agent skill and the attribution file must ship in the wheel.
+      - name: Wheel ships SKILL.md and NOTICE
+        run: |
+          unzip -l dist/*.whl > wheel-listing.txt
+          grep -q 'cleanroom/skill/SKILL.md' wheel-listing.txt \
+            || { echo "::error::wheel is missing cleanroom/skill/SKILL.md"; exit 1; }
+          grep -Eq 'licenses/NOTICE$' wheel-listing.txt \
+            || { echo "::error::wheel is missing licenses/NOTICE"; exit 1; }
+
+  test-matrix:
+    name: Test (${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.12", "3.13"]
+    env:
+      UV_PYTHON: ${{ matrix.python }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install ${{ matrix.python }}
+
+      - name: Sync
+        run: uv sync --locked --all-extras
+
+      # ELF on Linux; Mach-O, FAT and lldb on macOS. Engines auto-skip.
+      - name: Test
+        run: uv run pytest -m "not live" -q
+
+  # One stable check for branch protection, whatever shape the matrix takes.
+  test:
+    name: test
+    needs: test-matrix
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every matrix leg passed
+        run: |
+          test "${{ needs.test-matrix.result }}" = "success" \
+            || { echo "::error::test matrix result is ${{ needs.test-matrix.result }}"; exit 1; }
+
+  # Early warning for missing lief or capstone wheels on the next Python.
+  # The sync and test steps may fail; the job then passes with a warning
+  # annotation instead of a silent green.
+  test-next:
+    name: Test (ubuntu-latest, py3.14, may fail)
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.14"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install 3.14
+
+      - name: Sync
+        id: sync
+        continue-on-error: true
+        run: uv sync --locked --all-extras
+
+      - name: Test
+        id: test
+        if: steps.sync.outcome == 'success'
+        continue-on-error: true
+        run: uv run pytest -m "not live" -q
+
+      - name: Flag a failure without blocking
+        if: steps.sync.outcome != 'success' || steps.test.outcome != 'success'
+        run: echo "::warning title=Python 3.14::sync or tests failed on 3.14; check the lief and capstone wheels"

@@ -1,0 +1,31 @@
+# Gitleaks config — secrets detection for the staged diff (pre-commit) and the
+# whole working tree (pre-push, via `make scan_tree`).
+#
+# Adapted from Sage-is/AI-Education-Downes. Extends the upstream default
+# ruleset rather than replacing it, so new upstream rules arrive on a gitleaks
+# upgrade. Global allowlists use the `[[allowlists]]` form introduced in
+# v8.25.0; the singular `[allowlist]` table is deprecated.
+#
+# NOTE: tracked only because `.gitignore` allowlists it past the `.*` deny.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Project-specific false positives"
+
+paths = [
+  # Lockfile integrity hashes look like high-entropy secrets.
+  '''^uv\.lock$''',
+  # This file's own example patterns.
+  '''^\.gitleaks\.toml$''',
+  # Local-only credential and engine-path files. `.gitignore` keeps them out
+  # and the block-dotenv pre-commit hook closes `git add -f`; without this
+  # entry the pre-push tree scan is red on every push for a file that cannot
+  # reach the repo.
+  '''^\.env$''',
+  '''^\.env\..*$''',
+  # Verbatim test fixtures (rea conformance C, HAR captures, keyed archives,
+  # generated PE and firmware bytes) carry high-entropy literals by design.
+  '''^tests/fixtures/''',
+]

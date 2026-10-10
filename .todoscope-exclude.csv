@@ -1,0 +1,7 @@
+path,reason
+.venv,uv virtual environment
+__pycache__,Python bytecode cache
+dist,build output from uv build
+build,build output
+tests/fixtures,verbatim fixtures whose bytes must stay exact
+docs/research,survey notes that quote rea's own TODO text

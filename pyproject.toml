@@ -1,0 +1,107 @@
+[build-system]
+# 1.27 is the first hatchling that accepts the PEP 639 `license` string and
+# `license-files` list below.
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cleanroom-re"
+version = "0.1.0"
+description = "Reverse-engineer anything, locally: a DRY/KISS MCP server and CLI that returns pageable Evidence"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Sage.is" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development",
+]
+dependencies = [
+    "mcp>=2.3,<3",
+    "lief>=1.0,<2",
+    "capstone>=5.0.9,<6",
+    "psutil>=6",
+    "tree-sitter>=0.26,<0.27",
+    "tree-sitter-javascript>=0.25,<0.26",
+    "tree-sitter-typescript>=0.23,<0.24",
+    "dnfile>=0.18",
+    "dncil>=1.0.2",
+    "evmole>=0.9",
+    "ptyprocess>=0.7",
+    "pyte>=0.8",
+    "jsonschema>=4",
+]
+
+[project.optional-dependencies]
+web = ["playwright>=1.63"]
+android = ["androguard>=4.1"]
+ghidra = ["pyghidra>=3.1"]
+all = ["cleanroom-re[web,android,ghidra]"]
+
+[project.urls]
+Homepage = "https://github.com/Sage-is/CleanRoom"
+Repository = "https://github.com/Sage-is/CleanRoom"
+Issues = "https://github.com/Sage-is/CleanRoom/issues"
+
+[project.scripts]
+cleanroom = "cleanroom.__main__:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9",
+    "pytest-timeout>=2.3",
+    "ruff>=0.9",
+    "pre-commit>=4",
+]
+
+[tool.hatch.build.targets.wheel]
+# hatchling ships every file under the package directory, so skill/SKILL.md
+# rides along without an explicit include.
+packages = ["cleanroom"]
+
+[tool.hatch.build.targets.sdist]
+# The sdist is a public artifact: the package, its tests and the design doc,
+# not the agent rules, the board, the lockfile, CI or hook config.
+only-include = [
+    "cleanroom",
+    "tests",
+    "docs/design.md",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "pyproject.toml",
+]
+
+[tool.codespell]
+# Library names the dictionary flags as typos.
+ignore-words-list = "lief"
+
+[tool.ruff]
+line-length = 99
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+timeout = 120
+markers = [
+    "live: needs the network, a real browser or a published package; nightly only",
+    "ghidra: needs a local Ghidra install (GHIDRA_INSTALL_DIR) and JDK 21",
+    "ida: needs a local IDA Pro 9 install with idalib (IDADIR)",
+    "hopper: needs a local Hopper Disassembler install",
+    "lldb: needs the lldb command line debugger (macOS Xcode tools)",
+    "jadx: needs the jadx command line decompiler",
+    "unblob: needs the unblob or binwalk firmware extractor",
+    "playwright: needs playwright with a downloaded chromium",
+]

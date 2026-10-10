@@ -1,0 +1,4 @@
+# Fixture bytes stay exact: BOM, CRLF and U+2028 must survive checkout on every platform.
+tests/fixtures/** -text
+# C fixtures compile at test time; LF line ends keep cc output identical everywhere.
+*.c text eol=lf

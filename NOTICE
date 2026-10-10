@@ -1,0 +1,42 @@
+CleanRoom
+Copyright (C) 2026 Sage.is
+Licensed under the GNU AGPL-3.0-or-later; see LICENSE.
+
+CleanRoom adapts code and test fixtures from morluto/rea
+(https://github.com/morluto/rea), commit 46c9cba, MIT License,
+Copyright (c) 2026 morluto. Adapted source files carry a header line
+"Adapted from rea <path>@46c9cba (MIT, (c) morluto); see NOTICE" and are
+listed under "Adapted files". Verbatim fixtures carry no header, so their
+bytes stay exact; their folders are listed under "Verbatim fixtures".
+tests/test_notice.py keeps both lists in sync with the tree.
+
+Adapted files:
+  (none yet)
+
+Verbatim fixtures:
+  tests/fixtures/c/  from tests/conformance/c/
+  tests/fixtures/c/  from tests/conformance/versions/
+  tests/fixtures/golden/  from tests/fixtures/golden/
+
+MIT License text (morluto/rea):
+MIT License
+
+Copyright (c) 2026 morluto
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

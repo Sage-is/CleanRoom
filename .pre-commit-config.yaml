@@ -1,0 +1,138 @@
+# =============================================================================
+# Pre-commit Git Hooks — Fast Developer Feedback
+# =============================================================================
+# Adapted from Sage-is/AI-Education-Downes (itself from Sage-is/AI-UI). These
+# run on every `git commit` via the pre-commit framework (https://pre-commit.com).
+#
+# IMPORTANT: a developer convenience, NOT a security boundary. Hooks run
+# client-side and can be bypassed with --no-verify. CI reruns every hook over
+# all files, and because the gitleaks hook only sees the staged diff (empty on
+# a fresh checkout) CI also runs `make scan_tree scan_history` itself.
+#
+# Setup:   make install_hooks
+# Manual:  uv run pre-commit run --all-files
+# Update:  uv run pre-commit autoupdate
+#
+# NOTE: this file is only tracked because `.gitignore` allowlists it past the
+# `.*` deny. If that entry is removed, every hook below goes silently inert on
+# a fresh clone — the exact failure AI-UI hit in 2026-08.
+# =============================================================================
+
+repos:
+  # ---------------------------------------------------------------------------
+  # Secrets Detection — catch accidentally committed keys/tokens
+  # ---------------------------------------------------------------------------
+  # Gitleaks is a single Go binary. Fully local, zero network calls.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  # ---------------------------------------------------------------------------
+  # Local credential files — never stageable, not even with -f
+  # ---------------------------------------------------------------------------
+  # .env is allowlisted in .gitleaks.toml so the pre-push tree scan is not red
+  # on every push for a correctly-ignored local file. This hook closes the gap
+  # that allowlist opens: `git add -f .env` would sail past both .gitignore
+  # and the scanner. It cannot pass this.
+  - repo: local
+    hooks:
+      - id: block-dotenv
+        name: block .env from being staged
+        entry: bash -c 'echo "" >&2; echo "[ABORT] Local credential file staged for commit:" >&2; for f in "$@"; do echo "  - $f" >&2; done; echo "" >&2; echo ".env holds real API keys and engine paths and is local-only. This repo is PUBLIC." >&2; echo "Commit .env.example with placeholder values instead." >&2; exit 1' --
+        language: system
+        files: ^\.env($|\.)
+        exclude: \.example$
+        pass_filenames: true
+        stages: [pre-commit]
+
+  # ---------------------------------------------------------------------------
+  # Private-data tree scan — pre-push backstop (whole tree, not just staged)
+  # ---------------------------------------------------------------------------
+  # The gitleaks hook above scans the STAGED diff at commit time. This runs
+  # across the ENTIRE working tree at push time, catching anything a bypassed
+  # commit (--no-verify) let through before it leaves the machine.
+  #
+  # always_run is load-bearing, not decoration. `pass_filenames: false` only
+  # says "do not hand the hook a file list"; it does NOT say "run when the list
+  # is empty". pre-commit defaults always_run to false, so a push whose ref
+  # range contains no new commits — a TAG push above all — would skip this with
+  # "(no files to check)". AI-UI observed exactly that on a v3.1.0 tag repair.
+  - repo: local
+    hooks:
+      - id: scan-tree
+        name: private-data scan (gitleaks --no-git, whole tree)
+        entry: make scan_tree
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]
+
+  # ---------------------------------------------------------------------------
+  # Python Security — catch common security bugs in the package itself
+  # ---------------------------------------------------------------------------
+  # -ll: medium severity and up. Tests and scripts are out of scope.
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.9.4
+    hooks:
+      - id: bandit
+        args: ["-ll"]
+        files: ^cleanroom/
+
+  # ---------------------------------------------------------------------------
+  # Spell Checking — catch typos in code, comments and docs
+  # ---------------------------------------------------------------------------
+  # Fixtures are byte-exact copies, the survey notes quote rea verbatim, and
+  # lockfiles are generated.
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.3
+    hooks:
+      - id: codespell
+        exclude: '(^tests/fixtures/|uv\.lock|^docs/research/|\.lock$)'
+
+  # ---------------------------------------------------------------------------
+  # Basic Hygiene — zero-cost safety nets
+  # ---------------------------------------------------------------------------
+  # tests/fixtures/ is excluded from every fixer and checker: .gitattributes
+  # marks it `-text` so BOM, CRLF and U+2028 bytes stay exact, and a fixer
+  # that "cleans" a fixture breaks the test that depends on those bytes.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Leftover merge conflict markers (<<<<<<, ======, >>>>>>)
+      - id: check-merge-conflict
+
+      # Large binaries by accident (>500KB) — no compiled binaries are
+      # committed; C fixtures build at test time. --enforce-all checks every
+      # file handed to the hook, not only staged additions, so `--all-files`
+      # in CI covers the tree (uv.lock is about 350KB).
+      - id: check-added-large-files
+        args: ["--maxkb=500", "--enforce-all"]
+
+      # Valid JSON — HAR fixtures may carry duplicate keys on purpose.
+      - id: check-json
+        exclude: ^tests/fixtures/
+
+      - id: trailing-whitespace
+        exclude: ^tests/fixtures/
+
+      - id: end-of-file-fixer
+        exclude: ^tests/fixtures/
+
+  # ---------------------------------------------------------------------------
+  # Lint and format — ruff, same config as `make lint` (pyproject.toml)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.0
+    hooks:
+      - id: ruff-check
+        args: ["--fix"]
+      - id: ruff-format
+
+  # ---------------------------------------------------------------------------
+  # Lockfile — uv.lock is committed and must match pyproject.toml
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.13.0
+    hooks:
+      - id: uv-lock

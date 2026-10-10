@@ -1,0 +1,122 @@
+name: Release
+
+# Two ways in:
+#   - a `v*` tag push (made by `make release` via git-flow) publishes to PyPI
+#     through the `pypi` environment, whose required reviewer is the gate;
+#   - `gh workflow run release.yml -f index=testpypi` rehearses against
+#     TestPyPI from any branch, no tag needed, and may be repeated for the
+#     same version (existing files are skipped).
+# A branch dispatch can never reach PyPI: the tag lane is the only PyPI path.
+# Both lanes go through the `pypi`/`testpypi` Trusted Publisher: no API token
+# is stored anywhere.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      index:
+        description: Package index to publish to (PyPI is tag-only)
+        type: choice
+        options: [testpypi]
+        default: testpypi
+
+# A release run is never cancelled by a later one.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Build
+    needs: ci
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+
+      # git-flow's `release_finish` depends on `bump_release_version`, so the
+      # tag and pyproject.toml agree. This is the backstop for a hand-made tag.
+      - name: Tag matches pyproject version
+        if: github.ref_type == 'tag'
+        run: |
+          want="v$(uv version --short)"
+          if [ "$GITHUB_REF_NAME" != "$want" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match pyproject.toml version ($want)."
+            echo "::error::Bump pyproject.toml with 'make bump_release_version' and re-tag; never retag a published version."
+            exit 1
+          fi
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to ${{ inputs.index == 'testpypi' && 'TestPyPI' || 'PyPI' }}
+    needs: build
+    # Belt and braces with the single dispatch choice above: PyPI only from a tag.
+    if: inputs.index == 'testpypi' || github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.index == 'testpypi' && 'testpypi' || 'pypi' }}
+    permissions:
+      id-token: write
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      # Two steps rather than one with a conditional URL: an empty
+      # `repository-url` reaches twine verbatim and breaks the action's
+      # trusted-publishing detection.
+      # TestPyPI rejects a filename it already holds, so a repeated rehearsal
+      # of one version skips instead of failing. PyPI stays strict.
+      - name: Publish to TestPyPI
+        if: inputs.index == 'testpypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+      - name: Publish to PyPI
+        if: inputs.index != 'testpypi'
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: GitHub release
+    needs: publish
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download dist
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes dist/*
