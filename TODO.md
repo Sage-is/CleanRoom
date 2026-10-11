@@ -28,10 +28,9 @@ special case (Alexander, 2026-10-10).
 - [ ] **Release v0.1.0**: claim `cleanroom-re` on PyPI; P0 is on `develop` with CI green, so this is the next step [RELEASE] (Alexander) #release #critical
   - [ ] [MANUALLY] PyPI and TestPyPI pending Trusted Publisher (needs a PyPI login): project `cleanroom-re`, owner `Sage-is`, repo `CleanRoom`, workflow `release.yml`, environment `pypi` (TestPyPI: `testpypi`)
   - [x] [WE] GitHub environments `pypi` (reviewer: opencoca, tag rule `v*`) and `testpypi` exist; ruleset `protect-trunks` guards `master`/`develop` on `lint` and `test` with admin bypass (2026-10-10)
-  - [ ] [MANUALLY] `gh workflow run release.yml -f index=testpypi`
-  - [ ] [WE] Install from TestPyPI; run `cleanroom version`
-  - [ ] [MANUALLY] On `develop` with CI green: `make release` (git-release, `minor_release`, `release_finish` after `bump_release_version`)
-  - [ ] [MANUALLY] Approve the `pypi` environment
+  - [x] [WE] TestPyPI rehearsal skipped: the release went straight to the tag; `release.yml` keeps the `index=testpypi` dispatch for later releases
+  - [x] [WE] `make minor_release && make release_finish` on green CI: tag `v0.1.0` on `481a186`, `master` updated (2026-10-11)
+  - [ ] [MANUALLY] After the publisher exists, approve the `pypi` deployment on run https://github.com/Sage-is/CleanRoom/actions/runs/38099416308 (ci and build passed; publish is waiting). If it was approved too early and failed, add the publisher and re-run the failed jobs
   - [ ] [WE] `gh run watch`; `https://pypi.org/pypi/cleanroom-re/0.1.0/json` returns 200; `uvx --from cleanroom-re==0.1.0 cleanroom doctor`
 
 ## TODO
