@@ -383,7 +383,7 @@ def test_xrefs_to_a_string_address_names_its_users(handle: native.Handle) -> Non
 
 
 def test_xrefs_to_an_import_by_name_and_bare_hex(handle: native.Handle) -> None:
-    for ref in ("puts", "_puts"):
+    for ref in {"puts", sym(handle, "puts")}:  # ELF has no underscore prefix
         items = native.xrefs(handle, ref, "to")
         items = items.value if isinstance(items, Finding) else items
         assert items and {i["type"] for i in items} == {"import"}
