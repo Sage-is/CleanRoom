@@ -11,7 +11,7 @@ bytes stay exact; their folders are listed under "Verbatim fixtures".
 tests/test_notice.py keeps both lists in sync with the tree.
 
 Adapted files:
-  (none yet)
+  cleanroom/skill/SKILL.md  from .agents/skills/reverse-engineer-anything/SKILL.md
 
 Verbatim fixtures:
   tests/fixtures/c/  from tests/conformance/c/

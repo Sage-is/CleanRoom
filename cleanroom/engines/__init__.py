@@ -28,7 +28,10 @@ def xcode_tools() -> bool:
     """
     if sys.platform != "darwin":
         return True
-    done = subprocess.run(["xcode-select", "-p"], capture_output=True, check=False)
+    try:
+        done = subprocess.run(["xcode-select", "-p"], capture_output=True, check=False, timeout=5)
+    except (OSError, subprocess.TimeoutExpired):  # a wedged or prompting shim counts as absent
+        return False
     return done.returncode == 0
 
 
@@ -63,14 +66,19 @@ def _lldb() -> str | None:
 
 
 def _playwright() -> str | None:
-    """The chromium path, only once ``playwright install chromium`` has run."""
+    """The cached chromium directory, only once ``playwright install chromium`` has run.
+
+    The browser cache is checked on disk; the Node driver is never started by a
+    probe, since a wedged driver would hang ``doctor`` under the session lock.
+    """
     if not _has_module("playwright"):
         return None
-    from playwright.sync_api import sync_playwright
-
-    with sync_playwright() as p:
-        path = p.chromium.executable_path
-    return path if Path(path).exists() else None
+    default = (
+        "~/Library/Caches/ms-playwright" if sys.platform == "darwin" else "~/.cache/ms-playwright"
+    )
+    base = Path(os.environ.get("PLAYWRIGHT_BROWSERS_PATH") or default).expanduser()
+    hits = sorted(base.glob("chromium-*")) if base.is_dir() else []
+    return str(hits[-1]) if hits else None
 
 
 def _builtin() -> str:
