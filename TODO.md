@@ -25,46 +25,22 @@ special case (Alexander, 2026-10-10).
 
 ## In Progress
 
-- [ ] **Stage 0 bootstrap**: scaffold the repo until `make ci` is green [REPO] (Alexander) #stage0 #critical
-  - [ ] [MANUALLY] Create the GitHub repo `Sage-is/CleanRoom` (public) with `develop` as the default branch
-  - [x] [MANUALLY] `git init` and `git flow init --init -d -m master -e develop -t v`
-  - [x] [WE] `git flow init --shared -f -d -m master -e develop -t v` writes the committed `.gitflow`, so a fresh clone has the `v` tag prefix
-  - [ ] [WE] Makefile, `.gitignore`, `.gitattributes`, `pyproject.toml`, `uv.lock`, `.python-version` (3.12)
-  - [ ] [WE] `.pre-commit-config.yaml`, `.gitleaks.toml`, `.todoscope-exclude.csv`, `.env.example`
-  - [ ] [WE] `.github/workflows/ci.yml`, `release.yml`, `nightly.yml`
-  - [x] [WE] LICENSE (AGPL-3.0), NOTICE, README.md, CLAUDE.md, TODO.md, `docs/design.md` updates
-  - [ ] [WE] `uv lock && make install && make ci verify`; `git ls-files -i -c --exclude-standard` prints nothing
-  - [ ] [WE] `make install_hooks`, then `uv run pre-commit run --all-files`
-  - [ ] [MANUALLY] First commit on `develop`; push `develop` and `master`
-  - [ ] [MANUALLY] GitHub: `pypi` environment (required reviewer, tag rule `v*`), `testpypi` environment; protect `master` and `develop` on `lint` and `test`
-  - [ ] [WE] `gh run watch`; fix the first CI run
-
-## TODO
-
-- [ ] **P0 core and builtin native**: registry, CLI/MCP, Evidence, worker, lief + capstone; about 1,970 lines [CODE] (Alexander) #p0
-  - [ ] [WE] P0.1 fixtures `tests/fixtures/c/{fixture,v1,v2}.c`, `tests/conftest.py`, `tests/test_budget.py`, `tests/test_notice.py`
-  - [ ] [WE] P0.2 `target.py`: `Fail`, `Target`, `open_target`, `detect`, `parse_ref`
-  - [ ] [WE] P0.3 `evidence.py`: `Evidence`, `canonical`, `Ledger`, `page`, JSONL export and import
-  - [ ] [WE] P0.4 `proc.py` part 1: `run_limited`, `spawn_owned`, `kill_owned`
-  - [ ] [WE] P0.5 `worker.py`: `serve`, `Worker`; deadline kill; a reply over 64 MiB fails `too_big`
-  - [ ] [WE] P0.6 `tools.py`, `__main__.py`: verbs `open close list show xrefs evidence doctor`; commands `mcp`, `catalog`, `setup`, `version`; golden `mcp-initialize.json`
-  - [ ] [WE] P0.7 `kinds/native.py` builtin: lief slices, inventories, capstone xref scan; `pseudo` fails `unsupported`
-  - [ ] [WE] P0.8 `graph.py`: `trace` BFS (`max_nodes=500`), keyed `diff`
-  - [ ] [WE] P0.9 `cleanroom/skill/SKILL.md` and `tests/test_p0_e2e.py`
-
-- [ ] **Release v0.1.0**: claim `cleanroom-re` on PyPI right after P0 [RELEASE] (Alexander) #release
-  - [ ] [MANUALLY] PyPI and TestPyPI pending Trusted Publisher: project `cleanroom-re`, repo `Sage-is/CleanRoom`, workflow `release.yml`, environments `pypi` and `testpypi`
+- [ ] **Release v0.1.0**: claim `cleanroom-re` on PyPI; P0 is on `develop` with CI green, so this is the next step [RELEASE] (Alexander) #release #critical
+  - [ ] [MANUALLY] PyPI and TestPyPI pending Trusted Publisher (needs a PyPI login): project `cleanroom-re`, owner `Sage-is`, repo `CleanRoom`, workflow `release.yml`, environment `pypi` (TestPyPI: `testpypi`)
+  - [x] [WE] GitHub environments `pypi` (reviewer: opencoca, tag rule `v*`) and `testpypi` exist; ruleset `protect-trunks` guards `master`/`develop` on `lint` and `test` with admin bypass (2026-10-10)
   - [ ] [MANUALLY] `gh workflow run release.yml -f index=testpypi`
   - [ ] [WE] Install from TestPyPI; run `cleanroom version`
   - [ ] [MANUALLY] On `develop` with CI green: `make release` (git-release, `minor_release`, `release_finish` after `bump_release_version`)
   - [ ] [MANUALLY] Approve the `pypi` environment
   - [ ] [WE] `gh run watch`; `https://pypi.org/pypi/cleanroom-re/0.1.0/json` returns 200; `uvx --from cleanroom-re==0.1.0 cleanroom doctor`
 
-- [ ] **Homebrew cleanroom launcher**: uv launcher in `sage-is/homebrew-apps`, after PyPI [RELEASE] (Alexander) #homebrew
-  - [ ] [WE] `homebrew-apps/cleanroom`: shell launcher with `VERSION=` that answers `version` locally; else `exec uvx -q --python "${CLEANROOM_PYTHON:-3.13}" --from "cleanroom-re${CLEANROOM_EXTRAS:+[$CLEANROOM_EXTRAS]}==$VERSION" cleanroom "$@"`
-  - [ ] [WE] `Formula/cleanroom.rb`: `depends_on "uv"`, sha256 of 64 zeros until released; caveats say run `cleanroom doctor` once and show `claude mcp add cleanroom -- cleanroom mcp`
-  - [ ] [WE] `make check_names NAMES=cleanroom` and `make check` in the tap
-  - [ ] [MANUALLY] Commit on the tap's `develop`; `make tool_release TOOL=cleanroom VERSION=0.1.0 APPLY=1`
+## TODO
+- [ ] **Homebrew cleanroom launcher**: launcher and formula are on the tap's `develop` with the zero sha256; `tool_release` waits for PyPI [RELEASE] (Alexander) #homebrew
+  - [x] [WE] `homebrew-apps/cleanroom`: shell launcher with `VERSION=` that answers `version` locally; else `exec uvx -q --python "${CLEANROOM_PYTHON:-3.13}" --from "cleanroom-re${CLEANROOM_EXTRAS:+[$CLEANROOM_EXTRAS]}==$VERSION" cleanroom "$@"`
+  - [x] [WE] `Formula/cleanroom.rb`: `depends_on "uv"`, sha256 of 64 zeros until released; caveats say run `cleanroom doctor` once and show `claude mcp add cleanroom -- cleanroom mcp`
+  - [x] [WE] `make check_names NAMES=cleanroom` and `make check` in the tap
+  - [x] [WE] Committed and pushed on the tap's `develop` (2026-10-10)
+  - [ ] [MANUALLY] After PyPI has 0.1.0: `make tool_release TOOL=cleanroom VERSION=0.1.0 APPLY=1` in the tap
   - [ ] [WE] `brew test cleanroom`
 
 - [ ] **P1 Ghidra and static JS/Electron**: pyghidra worker, ASAR, tree-sitter, IPC goldens; about 1,610 lines [CODE] (Alexander) #p1
@@ -122,6 +98,14 @@ _No known bugs. Use `# BUG:` inline tags to flag defects in source._
 
 ## Done
 
+- [x] **Stage 0 bootstrap**: repo `Sage-is/CleanRoom`, scaffold, hooks, CI green on 3.12/3.13 Ubuntu and macOS (Alexander, 2026-10-10)
+  - [x] [WE] Makefile, allowlist `.gitignore`, `.gitattributes`, `pyproject.toml` (hatchling, uv), `.python-version`, pre-commit, gitleaks, `.gitflow`
+  - [x] [WE] `ci.yml`, `release.yml`, `nightly.yml`; first run fixed (`setup-uv@v7`)
+  - [x] [WE] LICENSE (AGPL-3.0), NOTICE, README, CLAUDE.md, design doc updates; `make ci verify` green; hooks installed
+  - [x] [WE] GitHub repo created, `develop` default, environments and ruleset set; `develop` and `master` pushed
+- [x] **P0 core and builtin native**: 240 tests, 2,267 of 7,000 budgeted lines; commit `45da041` (Alexander, 2026-10-11)
+  - [x] [WE] `target`, `evidence`, `proc`, `worker`, `tools`, `__main__`, `kinds/native`, `graph`, `skill/SKILL.md`, e2e tests
+  - [x] [WE] Registered in Claude Code user config: `claude mcp add cleanroom -s user -- uv run --directory <checkout> cleanroom mcp`
 - [x] **Design doc and research notes**: `docs/design.md` and `docs/research/rea-*.md` (Alexander, 2026-10-10)
   - [x] Survey of rea at commit `46c9cba`: core, native, js-web, other targets
   - [x] 12 verbs, kind modules, one Evidence type, JSON-lines workers
