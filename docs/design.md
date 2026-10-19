@@ -86,6 +86,7 @@ A URL is a `web` target. Detect files by content where possible, not suffix alon
 | `firmware` | Fallback for blobs that `binwalk` scans | regions | info | `binwalk` / `unblob` subprocesses |
 | `apple` | `.app` bundle, DMG (`koly` trailer), IPA, plist | files, plists, dylibs, entitlements | plist, signature, info | `plistlib`, `lief`, `codesign`, `hdiutil` |
 | `evm` | Hex or raw bytecode, by explicit kind | selectors | info | `evmole` |
+| `sci` | Directory with a Sierra `resource.map` (SCI0 or SCI1-early), or that file | resources, scripts, objects, functions, strings, kernels, selectors | asm, object, hex, info | stdlib: map, LZW, Huffman and LZW1 decoders, script blocks, bytecode walker |
 | `process` | A capture produced by `run` | events, files, processes | screen, output, event | `ptyprocess` + `pyte` + `psutil`; `lldb` tracer |
 
 Choices follow [rea-native.md](research/rea-native.md), [rea-js-web.md](research/rea-js-web.md), and [rea-other-targets.md](research/rea-other-targets.md). Only builtin needs no reverse-engineering application; native capabilities vary (`src/application/AnalysisProvider.ts`, `src/native/NativeMacOSProvider.ts`).
@@ -164,7 +165,7 @@ Usable partial analysis returns Evidence with unknowns, not an error. MCP return
 
 ## 8. Layout and line budgets
 
-Budget: 7,000 counted lines of Python source, 1,000 below the ceiling. Files adapted from rea are listed below and not counted. The per-file figures are individual caps, not targets: they sum to 7,100, so they cannot all be reached at once, and the 7,000 total binds first. Estimates come from the survey notes, for example about 800 lines for .NET and 300 for the Node resolver alone.
+Budget: 7,850 counted lines of Python source, 150 below the ceiling. Files adapted from rea are listed below and not counted. The per-file figures are individual caps, not targets: they sum to 7,950, so they cannot all be reached at once, and the 7,850 total binds first. The total was 7,000 until the `sci` kind (2026-10-18) added its 850-line cap: one module covers the resource map, three decompressors, the script format and the bytecode walker. Its decompiler, transpiler and runtime live outside CleanRoom, in SCI-Recomp. Estimates come from the survey notes, for example about 800 lines for .NET and 300 for the Node resolver alone.
 
 ```text
 cleanroom/
@@ -175,8 +176,9 @@ cleanroom/
   proc.py              300   run_limited, owned process groups
   worker.py            180   JSON-lines loop (worker side) and client
   graph.py             250   trace BFS, keyed three-way diff
-  kinds/             4,350
+  kinds/             5,200
     native.py          600   engine choice, builtin lief + capstone, cores, Hopper launch
+    sci.py             850   Sierra SCI0/SCI1-early resources, scripts and bytecode
     js.py            1,100   ASAR, tree-sitter queries, Node resolver, source maps, IPC
     web.py             400   playwright page, network, screenshot, scenario
     har.py             120

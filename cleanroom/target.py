@@ -47,7 +47,18 @@ class Fail(Exception):
 
 
 # Most specific first (design section 3). "evm" is never detected: it must be named.
-KIND_ORDER = ("web", "har", "process", "dotnet", "android", "apple", "js", "native", "firmware")
+KIND_ORDER = (
+    "web",
+    "har",
+    "process",
+    "dotnet",
+    "android",
+    "apple",
+    "sci",
+    "js",
+    "native",
+    "firmware",
+)
 HEAD_BYTES = 4096
 # FAT and FAT64 Mach-O magics. Java class files share CAFEBABE; see is_fat_macho.
 FAT_MAGICS = (b"\xca\xfe\xba\xbe", b"\xca\xfe\xba\xbf")

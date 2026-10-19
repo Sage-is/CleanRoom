@@ -81,8 +81,8 @@ only-include = [
 ]
 
 [tool.codespell]
-# Library names the dictionary flags as typos.
-ignore-words-list = "lief"
+# Library names and SCI opcodes (calle: call external) the dictionary flags as typos.
+ignore-words-list = "lief,calle"
 
 [tool.ruff]
 line-length = 99

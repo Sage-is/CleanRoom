@@ -34,6 +34,13 @@ special case (Alexander, 2026-10-10).
   - [ ] [WE] `gh run watch`; `https://pypi.org/pypi/cleanroom-re/0.1.0/json` returns 200; `uvx --from cleanroom-re==0.1.0 cleanroom doctor`
 
 ## TODO
+- [ ] **SCI kind**: `kinds/sci.py` (850) reads Sierra SCI0/SCI1-early games for SCI-Recomp; Jones in the Fast Lane is the live target [CODE] (Alexander) #sci
+  - [x] [WE] Map, patch files, generation probe, LZW / Huffman / LZW1, script blocks, objects, bytecode walker with send resolution (2026-10-18)
+  - [x] [WE] `list`/`show`/`xrefs` vocabulary; `KIND_ORDER` gains `sci`; design sections 4 and 8 (budget 7,000 to 7,850)
+  - [x] [WE] `tests/fixtures/sci.py` synthetic game and `tests/test_sci.py` (30 tests); `CLEANROOM_SCI_GAME` test passes on Jones; `make ci` green, 270 passed (2026-10-18)
+  - [ ] [MANUALLY] Reconnect the `cleanroom` MCP server (`/mcp`) so it loads the `sci` kind
+  - [ ] [MANUALLY] Commit on `develop`; optional ScummVM `disasm` spot-check of 3 methods
+
 - [ ] **Homebrew cleanroom launcher**: launcher and formula are on the tap's `develop` with the zero sha256; `tool_release` waits for PyPI [RELEASE] (Alexander) #homebrew
   - [x] [WE] `homebrew-apps/cleanroom`: shell launcher with `VERSION=` that answers `version` locally; else `exec uvx -q --python "${CLEANROOM_PYTHON:-3.13}" --from "cleanroom-re${CLEANROOM_EXTRAS:+[$CLEANROOM_EXTRAS]}==$VERSION" cleanroom "$@"`
   - [x] [WE] `Formula/cleanroom.rb`: `depends_on "uv"`, sha256 of 64 zeros until released; caveats say run `cleanroom doctor` once and show `claude mcp add cleanroom -- cleanroom mcp`

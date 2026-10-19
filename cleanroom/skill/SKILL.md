@@ -59,6 +59,7 @@ tool `list` with `{"what": "functions", "limit": 50}`.
 | Web page (http(s) URL) | `open`, `list scripts`, `list requests`, `show SCRIPT --view source`; `run` only when the question needs a driven session |
 | Two versions of anything | `diff A B --what functions` (or any `list` category) |
 | EVM bytecode | `open --kind evm`, `list selectors` |
+| Sierra SCI game (directory with `resource.map`) | `open DIR`, `list scripts`, `list objects --match NAME`, `show Obj::method --view asm`, `show OBJ` (properties), `xrefs kernel:NAME --direction to`, `trace` |
 
 ## Reading a reply
 
@@ -124,8 +125,16 @@ Once bound, CleanRoom never fails over to another engine. No engine is a cloud s
 
 ## What works today (P0)
 
-- Kind: `native` only, through the builtin engine: ELF, Mach-O (thin or FAT;
+- Kind `native`, through the builtin engine: ELF, Mach-O (thin or FAT;
   the host architecture's slice by default, `arch` for another) and PE.
+- Kind `sci`: Sierra SCI0 and SCI1-early games (a directory holding
+  `resource.map`, or that file). `list` takes `resources`, `scripts`,
+  `objects`, `functions`, `strings`, `kernels`, `selectors`; `show` takes
+  `auto`, `info`, `asm`, `object`, `hex`. A function address packs
+  `script << 16 | offset` (`0x64002e`); `100:0x2e` works too, as do
+  `Obj::selector`, `proc_100_2`, `script:100`, `view:100`, `kernel:Animate`
+  and `selector:init`. A send to an object held in a variable names only its
+  selector (`selector:...`), and its reply carries that unknown.
 - Verbs: `open`, `close`, `list`, `show`, `xrefs`, `trace`, `diff`,
   `evidence`, `doctor`. `list` takes `functions`, `symbols`, `strings`,
   `sections`, `imports`, `exports`; `show` takes `auto`, `info`, `asm`, `bytes`.
@@ -135,7 +144,7 @@ Once bound, CleanRoom never fails over to another engine. No engine is a cloud s
 
 `unsupported` today: `show --view pseudo` on builtin (install Ghidra, free);
 `engine=ghidra` or `hopper` even when installed (their drivers come later);
-`extract`, `run`, `annotate`; and every other kind, so a JS tree, an APK, a URL
+`extract`, `run`, `annotate`; and every kind not listed above, so a JS tree, an APK, a URL
 or a HAR file fails at `open`. `engine_missing`: not installed; `doctor` says how.
 
 ## Plan a request that spans several features or subsystems
