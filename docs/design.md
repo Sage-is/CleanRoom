@@ -101,7 +101,7 @@ Each operation produces a stable record with inputs, subject, engine, result, co
 class Evidence:
     op: str  # verb that produced it: "show", "trace", ...
     params: dict  # verb arguments, as called
-    subject: dict | None  # {path, sha256, kind, format, arch}; None when derived
+    subject: dict | None  # {name, sha256, kind, format, arch}; None when derived
     engine: str  # "ghidra 12.0.1", "lief 1.0.0 + capstone 5.0.9"
     result: Any
     confidence: Literal["observed", "derived", "inferred"]
@@ -115,6 +115,8 @@ class Evidence:
 ```
 
 `canonical` is `json.dumps(sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)` encoded as UTF-8. The ID authenticates CleanRoom records, not rea records. Import recomputes every ID and rejects a mismatch.
+
+The subject names a target by its content and file name, never by where it sits, so the same finding on the same bytes has the same ID on any machine. Only an `open` record says where the target was.
 
 The session ledger is a dict keyed by ID. Recording an identical record is a no-op; two records cannot share an ID. A result over 64 KB stays in the ledger. The reply carries the first page, the `evidence_id` and the next offset, and `evidence(id, offset)` returns later pages. Export and import use JSONL, one record per line.
 

@@ -203,7 +203,7 @@ def test_diff_two_paths(session: Session, c_v1: Path, c_v2: Path) -> None:
     reply = run(session, "diff", a=str(c_v1), b=str(c_v2))
     res, cats = reply["result"], reply["result"]["categories"]
     assert res["status"] == "changed" and res["kind"] == "native"
-    assert res["a"]["path"] == str(c_v1) and res["b"]["path"] == str(c_v2)
+    assert res["a"]["name"] == c_v1.name and res["b"]["name"] == c_v2.name
     assert res["a"]["sha256"] != res["b"]["sha256"]
     fn = cats["functions"]
     assert fn["added"] == [sym("rea_added")] and fn["removed"] == []
@@ -217,7 +217,7 @@ def test_diff_two_paths(session: Session, c_v1: Path, c_v2: Path) -> None:
     assert len(reply["links"]) == 2 * len(cats)
     for eid in reply["links"]:
         ev = session.ledger.get(eid)
-        assert ev.op == "list" and ev.subject["path"] in (str(c_v1), str(c_v2))
+        assert ev.op == "list" and ev.subject["name"] in (c_v1.name, c_v2.name)
     me = session.ledger.get(reply["evidence_id"])
     assert me.op == "diff" and me.subject is None and me.engine == "cleanroom"
     assert me.params == {"a": str(c_v1), "b": str(c_v2), "what": None}
@@ -257,7 +257,7 @@ def test_diff_two_ids(session: Session, c_v1: Path, c_v2: Path) -> None:
     assert fn["changed"] == []  # no handle behind an id, so no asm to compare
     assert fn["unchanged"] > 0 and fn["status"] == "changed"
     assert reply["links"] == [id1, id2]
-    assert reply["result"]["a"]["path"] == str(c_v1)
+    assert reply["result"]["a"]["name"] == c_v1.name
     assert reply["unknowns"] == [
         "functions: only listed fields compared; pass paths to diff to compare asm bodies"
     ]
@@ -313,7 +313,7 @@ def test_diff_same_listed_fields_on_different_files_is_unknown(
 def test_diff_all_unkeyed_sides_are_unknown(session: Session) -> None:
     def rec(path: str, addrs: list[str]) -> Evidence:
         items = [{"name": "", "address": a, "size": 4} for a in addrs]
-        subject = {"path": path, "sha256": path * 8, "kind": "native"}
+        subject = {"name": path, "sha256": path * 8, "kind": "native"}
         return Evidence(
             "list", {"what": "functions", "match": None}, subject, "x", items, "observed"
         )

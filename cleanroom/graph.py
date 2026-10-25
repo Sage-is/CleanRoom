@@ -11,6 +11,7 @@ from __future__ import annotations
 import importlib
 import re
 from collections import deque
+from pathlib import Path
 from typing import Any
 
 from cleanroom.evidence import Evidence, Finding, canonical, page
@@ -143,7 +144,7 @@ def _record(session: Session, ref: str, what: str | None) -> dict:
     if ev.params.get("match"):  # a filtered inventory cannot support added or removed
         raise Fail("bad_input", f"{ref} is a filtered list (match={ev.params['match']!r})")
     sub = ev.subject or {}
-    return {**{k: sub.get(k) for k in ("kind", "path", "sha256")}, "lists": {cat: ev}}
+    return {**{k: sub.get(k) for k in ("kind", "name", "sha256")}, "lists": {cat: ev}}
 
 
 def _keys(module: Any) -> dict[str, str]:
@@ -166,7 +167,8 @@ def _opened(session: Session, path: str, cats: list[str] | None) -> dict:
     except BaseException:
         tmp.close()
         raise
-    return {**{k: head[k] for k in ("kind", "path", "sha256")}, "lists": lists, "session": tmp}
+    side = {"kind": head["kind"], "name": Path(head["path"]).name, "sha256": head["sha256"]}
+    return {**side, "lists": lists, "session": tmp}
 
 
 def _index(items: Any, key: str, ignore: set) -> tuple[dict, dict, int]:
@@ -266,8 +268,8 @@ def diff(session: Session, a: str, b: str, what: str | None = None) -> dict:
             tmp.close()
     seen = {r["status"] for r in reports.values()}
     result = {
-        "a": {"path": sides[0]["path"], "sha256": sides[0]["sha256"]},
-        "b": {"path": sides[1]["path"], "sha256": sides[1]["sha256"]},
+        "a": {"name": sides[0]["name"], "sha256": sides[0]["sha256"]},
+        "b": {"name": sides[1]["name"], "sha256": sides[1]["sha256"]},
         "kind": kind,
         "status": next((s for s in ("unknown", "changed") if s in seen), "unchanged"),
         "categories": reports,

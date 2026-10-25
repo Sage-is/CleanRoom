@@ -197,7 +197,7 @@ def test_open_binds_and_records(session: Session, fake_file: Path) -> None:
     assert session.target is not None and session.target.kind == "fake"
     ev = session.ledger.get(reply["evidence_id"])
     assert ev.subject == {
-        "path": str(fake_file),
+        "name": fake_file.name,
         "sha256": session.target.sha256,
         "kind": "fake",
         "format": "fake",
@@ -295,13 +295,26 @@ def test_open_twice_closes_the_first(session: Session, fake_file: Path) -> None:
     assert first["open"] is False and session.handle["engine"] == "fake 2.0"
 
 
+def test_the_same_bytes_elsewhere_give_the_same_ids(
+    session: Session, fake_file: Path, tmp_path
+) -> None:
+    copy = tmp_path / "elsewhere" / fake_file.name
+    copy.parent.mkdir()
+    copy.write_bytes(fake_file.read_bytes())
+    ids = []
+    for path in (fake_file, copy):
+        invoke(session, REGISTRY["open"], {"path": str(path)})
+        ids.append(invoke(session, REGISTRY["list"], {"what": "things"})["evidence_id"])
+    assert ids[0] == ids[1]
+
+
 def test_second_open_records_the_new_target(session: Session, fake_file: Path, tmp_path) -> None:
     other = tmp_path / "other.bin"
     other.write_bytes(b"FAKE\x00other")
     invoke(session, REGISTRY["open"], {"path": str(fake_file)})
     reply = invoke(session, REGISTRY["open"], {"path": str(other), "engine": "fake 2.0"})
     ev = session.ledger.get(reply["evidence_id"])
-    assert ev.subject["path"] == str(other) == session.target.path
+    assert ev.subject["name"] == other.name and session.target.path == str(other)
     assert ev.subject["sha256"] == session.target.sha256
     assert ev.engine == reply["engine"] == "fake 2.0"
 
@@ -333,7 +346,7 @@ def test_evidence_lists_pages_exports_and_imports(bound: Session, tmp_path: Path
         "id": eid,
         "op": "list",
         "params": {"what": "things", "match": None},
-        "path": str(bound.target.path),
+        "name": Path(bound.target.path).name,
         "sha256": bound.target.sha256,
         "engine": "fake 1.0",
     }

@@ -247,12 +247,16 @@ def plain(value: Any) -> Any:
 
 
 def _subject(session: Session) -> tuple[dict | None, str]:
-    """The Evidence subject and engine string for the open target, or (None, "cleanroom")."""
+    """The Evidence subject and engine string for the open target, or (None, "cleanroom").
+
+    The subject names the target by content and file name, never by where it sits, so the
+    same finding on the same bytes has the same id on any machine.
+    """
     t = session.target
     if t is None:
         return None, "cleanroom"
     info = plain(kind_call(session.kind, "info", session.handle))
-    subject = {"path": t.path, "sha256": t.sha256, "kind": t.kind}
+    subject = {"name": Path(t.path).name, "sha256": t.sha256, "kind": t.kind}
     subject.update({k: info.get(k) for k in ("format", "arch")})
     return subject, str(info.get("engine") or "unknown")
 
@@ -381,7 +385,7 @@ def _row(ev: Evidence) -> dict:
     """One ledger listing entry: enough to tell two list records of different files apart."""
     sub = ev.subject or {}
     head = {"id": ev.id, "op": ev.op, "params": ev.params}
-    return {**head, "path": sub.get("path"), "sha256": sub.get("sha256"), "engine": ev.engine}
+    return {**head, "name": sub.get("name"), "sha256": sub.get("sha256"), "engine": ev.engine}
 
 
 @tool(needs_target=False, records=False, read_only=False)
