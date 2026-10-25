@@ -55,6 +55,7 @@ KIND_ORDER = (
     "android",
     "apple",
     "sci",
+    "n8n",  # before js, which claims any package.json
     "js",
     "native",
     "firmware",

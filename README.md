@@ -4,9 +4,9 @@ CleanRoom is a local-only Python 3.12 reimplementation of
 [morluto/rea](https://github.com/morluto/rea) (MIT), the "Reverse Engineer
 Anything" MCP server and CLI. It keeps rea's analysis surface (native
 binaries, JavaScript and Electron, web pages, HAR files, .NET, Android, Apple
-bundles, EVM bytecode, Sierra SCI game scripts and process captures) in 12
-verbs, one Evidence type and one module per target kind, in under 8,000
-lines. rea's ideas, edge cases and some code are adapted with credit; see
+bundles, EVM bytecode, Sierra SCI game scripts, n8n node packages and process
+captures) in 12 verbs, one Evidence type and one module per target kind, in
+under 8,500 lines. rea's ideas, edge cases and some code are adapted with credit; see
 `NOTICE`.
 
 ## Status

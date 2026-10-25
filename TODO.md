@@ -41,6 +41,12 @@ special case (Alexander, 2026-10-10).
   - [ ] [MANUALLY] Reconnect the `cleanroom` MCP server (`/mcp`) so it loads the `sci` kind
   - [ ] [MANUALLY] Commit on `develop`; optional ScummVM `disasm` spot-check of 3 methods
 
+- [ ] **n8n kind**: `kinds/n8n.py` (150) lists nodes, credentials and operations from `n8n-nodes-base`'s JSON for Connector-Recomp [CODE] (Alexander) #n8n
+  - [x] [WE] Kind ahead of `js` in `KIND_ORDER`; design sections 4 and 8 (ceiling 8,000 to 8,500, budget 7,850 to 8,000) (2026-10-24)
+  - [x] [WE] `tests/fixtures/n8n.py` synthetic package and `tests/test_n8n.py` (13 tests); `CLEANROOM_N8N_PACKAGE` test passes on 2.11.2; `make ci` green, 280 passed (2026-10-24)
+  - [x] [WE] Committed and pushed on `develop` with Alexander's yes; it lives here like the `sci` kind (2026-10-25)
+  - [ ] [MANUALLY] Reconnect the `cleanroom` MCP server (`/mcp`) so it loads the `n8n` kind
+
 - [ ] **Homebrew cleanroom launcher**: launcher and formula are on the tap's `develop` with the zero sha256; `tool_release` waits for PyPI [RELEASE] (Alexander) #homebrew
   - [x] [WE] `homebrew-apps/cleanroom`: shell launcher with `VERSION=` that answers `version` locally; else `exec uvx -q --python "${CLEANROOM_PYTHON:-3.13}" --from "cleanroom-re${CLEANROOM_EXTRAS:+[$CLEANROOM_EXTRAS]}==$VERSION" cleanroom "$@"`
   - [x] [WE] `Formula/cleanroom.rb`: `depends_on "uv"`, sha256 of 64 zeros until released; caveats say run `cleanroom doctor` once and show `claude mcp add cleanroom -- cleanroom mcp`

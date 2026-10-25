@@ -4,7 +4,7 @@ CleanRoom is a local-only Python 3.12 reimplementation of morluto/rea (MIT; abou
 
 ## 1. Goal and non-goals
 
-Goal: rea's analysis power in a local tool under 8,000 lines of source. Tests live in `tests/` and are not counted. Every finding is pageable Evidence. Prefer existing parsers, state uncertainty, and never execute targets for static inspection. Every tool has a deadline and an output bound.
+Goal: rea's analysis power in a local tool under 8,500 lines of source. Tests live in `tests/` and are not counted. Every finding is pageable Evidence. Prefer existing parsers, state uncertainty, and never execute targets for static inspection. Every tool has a deadline and an output bound.
 
 Version 1 does not include:
 
@@ -87,6 +87,7 @@ A URL is a `web` target. Detect files by content where possible, not suffix alon
 | `apple` | `.app` bundle, DMG (`koly` trailer), IPA, plist | files, plists, dylibs, entitlements | plist, signature, info | `plistlib`, `lief`, `codesign`, `hdiutil` |
 | `evm` | Hex or raw bytecode, by explicit kind | selectors | info | `evmole` |
 | `sci` | Directory with a Sierra `resource.map` (SCI0 or SCI1-early), or that file | resources, scripts, objects, functions, strings, kernels, selectors | asm, object, hex, info | stdlib: map, LZW, Huffman and LZW1 decoders, script blocks, bytecode walker |
+| `n8n` | An `n8n-nodes-base` package, its `dist/types`, or `nodes.json` beside `credentials.json` | nodes, credentials, operations | routing, json, info | stdlib `json` |
 | `process` | A capture produced by `run` | events, files, processes | screen, output, event | `ptyprocess` + `pyte` + `psutil`; `lldb` tracer |
 
 Choices follow [rea-native.md](research/rea-native.md), [rea-js-web.md](research/rea-js-web.md), and [rea-other-targets.md](research/rea-other-targets.md). Only builtin needs no reverse-engineering application; native capabilities vary (`src/application/AnalysisProvider.ts`, `src/native/NativeMacOSProvider.ts`).
@@ -165,7 +166,7 @@ Usable partial analysis returns Evidence with unknowns, not an error. MCP return
 
 ## 8. Layout and line budgets
 
-Budget: 7,850 counted lines of Python source, 150 below the ceiling. Files adapted from rea are listed below and not counted. The per-file figures are individual caps, not targets: they sum to 7,950, so they cannot all be reached at once, and the 7,850 total binds first. The total was 7,000 until the `sci` kind (2026-10-18) added its 850-line cap: one module covers the resource map, three decompressors, the script format and the bytecode walker. Its decompiler, transpiler and runtime live outside CleanRoom, in SCI-Recomp. Estimates come from the survey notes, for example about 800 lines for .NET and 300 for the Node resolver alone.
+Budget: 8,000 counted lines of Python source, 500 below the ceiling. Files adapted from rea are listed below and not counted. The per-file figures are individual caps, not targets: they sum to 8,100, so they cannot all be reached at once, and the 8,000 total binds first. The total was 7,000 until the `sci` kind (2026-10-18) added its 850-line cap: one module covers the resource map, three decompressors, the script format and the bytecode walker. Its decompiler, transpiler and runtime live outside CleanRoom, in SCI-Recomp. The `n8n` kind (2026-10-24) added 150 lines and raised the ceiling from 8,000 to 8,500. It lists what an n8n package describes; Connector-Recomp does the rest. Estimates come from the survey notes, for example about 800 lines for .NET and 300 for the Node resolver alone.
 
 ```text
 cleanroom/
@@ -176,9 +177,10 @@ cleanroom/
   proc.py              300   run_limited, owned process groups
   worker.py            180   JSON-lines loop (worker side) and client
   graph.py             250   trace BFS, keyed three-way diff
-  kinds/             5,200
+  kinds/             5,350
     native.py          600   engine choice, builtin lief + capstone, cores, Hopper launch
     sci.py             850   Sierra SCI0/SCI1-early resources, scripts and bytecode
+    n8n.py             150   n8n node and credential descriptions (nodes.json)
     js.py            1,100   ASAR, tree-sitter queries, Node resolver, source maps, IPC
     web.py             400   playwright page, network, screenshot, scenario
     har.py             120
