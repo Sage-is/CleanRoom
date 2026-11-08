@@ -126,7 +126,10 @@ Once bound, CleanRoom never fails over to another engine. No engine is a cloud s
 ## What works today (P0)
 
 - Kind `native`, through the builtin engine: ELF, Mach-O (thin or FAT;
-  the host architecture's slice by default, `arch` for another) and PE.
+  the host architecture's slice by default, `arch` for another) and PE, on
+  arm64, x86_64 and i386. A 32-bit PE has no table of function starts, so its
+  functions start at direct call targets; absolute operands (globals, tables,
+  pushed addresses) are `data` xrefs.
 - Kind `sci`: Sierra SCI0 and SCI1-early games (a directory holding
   `resource.map`, or that file). `list` takes `resources`, `scripts`,
   `objects`, `functions`, `strings`, `kernels`, `selectors`; `show` takes

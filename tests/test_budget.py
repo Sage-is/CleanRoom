@@ -15,7 +15,7 @@ BUDGET = {
     "cleanroom/proc.py": 300,
     "cleanroom/worker.py": 180,
     "cleanroom/graph.py": 250,
-    "cleanroom/kinds/native.py": 600,
+    "cleanroom/kinds/native.py": 615,
     "cleanroom/kinds/sci.py": 850,
     "cleanroom/kinds/n8n.py": 150,
     "cleanroom/kinds/js.py": 1100,
@@ -35,7 +35,7 @@ ADAPTED = {
     "cleanroom/engines/hopper_bridge.py",
     "cleanroom/engines/rea_lldb_tracer.py",
 }
-# The per-file caps sum to 8,100: they are individual limits that cannot all be
+# The per-file caps sum to 8,115: they are individual limits that cannot all be
 # reached at once, and the total binds first (design section 8).
 TOTAL = 8000
 INIT_CAP = 30

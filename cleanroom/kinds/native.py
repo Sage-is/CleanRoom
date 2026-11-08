@@ -3,7 +3,7 @@
 The builtin engine needs no reverse-engineering application. It inventories
 functions, symbols, strings, sections, imports and exports, disassembles with
 capstone and builds one whole-binary xref index: calls, tail jumps, adrp+add
-and adrp+ldr pairs, RIP-relative operands, and stubs mapped to imports.
+and adrp+ldr pairs, RIP-relative and i386 absolute operands, and import stubs.
 Pseudocode needs Ghidra, which arrives in P1. Engine choice follows design
 section 6: explicit, then ``CLEANROOM_ENGINE``, then ``ENGINE_ORDER``.
 """
@@ -53,8 +53,9 @@ DIFF_KEYS = {
 }
 DIFF_IGNORE = {"address", "offset", "size"}
 MACHO_MAGICS = (b"\xfe\xed\xfa\xcf", b"\xcf\xfa\xed\xfe", b"\xfe\xed\xfa\xce", b"\xce\xfa\xed\xfe")
-ARCH_NAMES = {"arm64": "arm64", "aarch64": "arm64", "x86_64": "x86_64", "amd64": "x86_64"}
+ARCH_NAMES = {"aarch64": "arm64", "amd64": "x86_64", "x86": "i386"}  # others map to themselves
 CS_MODES = {"arm64": (cs.CS_ARCH_ARM64, cs.CS_MODE_ARM), "x86_64": (cs.CS_ARCH_X86, cs.CS_MODE_64)}
+CS_MODES["i386"] = (cs.CS_ARCH_X86, cs.CS_MODE_32)
 HEX_KEYS = ("address", "ref", "at")
 MIN_STRING = 4
 BYTES_VIEW = 256
@@ -267,7 +268,7 @@ def _cs_arch(h: Handle) -> str:
 def _disassembler(h: Handle) -> cs.Cs:
     if "md" not in h.cache:
         if _cs_arch(h) not in CS_MODES:
-            what = f"builtin disassembles arm64 and x86_64, not {h.arch}"
+            what = f"builtin disassembles arm64, x86_64 and i386, not {h.arch}"
             raise Fail("unsupported", what, "use Ghidra")
         md = cs.Cs(*CS_MODES[_cs_arch(h)])
         md.detail = True
@@ -284,6 +285,8 @@ def _functions(h: Handle) -> list[dict]:
     b, macho = h.binary, h.fmt == "macho"
     found = [(f.address, f.name) for f in b.functions if f.name or not macho]
     found.append((b.entrypoint, ""))
+    if h.fmt == "pe" and h.arch == "i386":
+        found.extend((a, "") for a in _call_targets(h))
     if macho and b.has_function_starts:
         found.extend((a, "") for a in b.function_starts.functions)
     starts: dict[int, str] = {}
@@ -302,6 +305,16 @@ def _functions(h: Handle) -> list[dict]:
             {"name": starts[addr], "address": addr, "size": nxt - addr, "_section": sec["name"]}
         )
     return out
+
+
+def _call_targets(h: Handle) -> set[int]:
+    """``call rel32`` targets by linear sweep: a 32-bit PE has no table of function starts."""
+    md = cs.Cs(*CS_MODES["i386"])
+    md.skipdata = True  # step over data in code instead of stopping there
+    h.unknowns.append("i386 PE: functions start at direct call targets; pointer-only code joins")
+    code = [(_read(h, s["address"], s["size"]), s["address"]) for s in h.sections if s["exec"]]
+    found = (op for c, a in code for _, _, m, op in md.disasm_lite(c, a) if m == "call")
+    return {int(op, 16) for op in found if op.startswith("0x")}
 
 
 def _symbols(h: Handle) -> list[dict]:
@@ -543,11 +556,18 @@ def _targets(h: Handle, insn: Any, pages: dict) -> list[tuple[str, int]]:
                 elif o.type == imm and flow:
                     out.append((flow, o.imm))
         return out
+    i386 = _cs_arch(h) == "i386"
     for o in ops:
         if o.type == cs.x86.X86_OP_MEM and o.mem.base == cs.x86.X86_REG_RIP:
             out.append((flow or "data", insn.address + insn.size + o.mem.disp))
         elif o.type == cs.x86.X86_OP_IMM and flow:
             out.append((flow, o.imm))
+        elif i386 and o.type == cs.x86.X86_OP_MEM and o.mem.disp & 0xFFFFFFFF >= h.base:
+            # An absolute operand: a global or an IAT slot; with a register, a table or array.
+            bare = not o.mem.base and not o.mem.index
+            out.append((bare and flow or "data", o.mem.disp & 0xFFFFFFFF))
+        elif i386 and o.type == cs.x86.X86_OP_IMM and o.imm & 0xFFFFFFFF >= h.base:
+            out.append(("data", o.imm & 0xFFFFFFFF))  # push or mov of an address
     return out
 
 

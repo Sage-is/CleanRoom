@@ -168,7 +168,7 @@ Usable partial analysis returns Evidence with unknowns, not an error. MCP return
 
 ## 8. Layout and line budgets
 
-Budget: 8,000 counted lines of Python source, 500 below the ceiling. Files adapted from rea are listed below and not counted. The per-file figures are individual caps, not targets: they sum to 8,100, so they cannot all be reached at once, and the 8,000 total binds first. The total was 7,000 until the `sci` kind (2026-10-18) added its 850-line cap: one module covers the resource map, three decompressors, the script format and the bytecode walker. Its decompiler, transpiler and runtime live outside CleanRoom, in SCI-Recomp. The `n8n` kind (2026-10-24) added 150 lines and raised the ceiling from 8,000 to 8,500. It lists what an n8n package describes; Connector-Recomp does the rest. Estimates come from the survey notes, for example about 800 lines for .NET and 300 for the Node resolver alone.
+Budget: 8,000 counted lines of Python source, 500 below the ceiling. Files adapted from rea are listed below and not counted. The per-file figures are individual caps, not targets: they sum to 8,115, so they cannot all be reached at once, and the 8,000 total binds first. The total was 7,000 until the `sci` kind (2026-10-18) added its 850-line cap: one module covers the resource map, three decompressors, the script format and the bytecode walker. Its decompiler, transpiler and runtime live outside CleanRoom, in SCI-Recomp. The `n8n` kind (2026-10-24) added 150 lines and raised the ceiling from 8,000 to 8,500. It lists what an n8n package describes; Connector-Recomp does the rest. The builtin engine's i386 support (2026-11-07, for AC-Recomp's 32-bit PE) raised `native.py` from 600 to 615. Estimates come from the survey notes, for example about 800 lines for .NET and 300 for the Node resolver alone.
 
 ```text
 cleanroom/
@@ -180,7 +180,7 @@ cleanroom/
   worker.py            180   JSON-lines loop (worker side) and client
   graph.py             250   trace BFS, keyed three-way diff
   kinds/             5,350
-    native.py          600   engine choice, builtin lief + capstone, cores, Hopper launch
+    native.py          615   engine choice, builtin lief + capstone, cores, Hopper launch
     sci.py             850   Sierra SCI0/SCI1-early resources, scripts and bytecode
     n8n.py             150   n8n node and credential descriptions (nodes.json)
     js.py            1,100   ASAR, tree-sitter queries, Node resolver, source maps, IPC

@@ -445,3 +445,54 @@ def test_bin_ls_is_fat_with_imports_and_an_entry() -> None:
     assert any(i["type"] == "import" and i["name"].startswith("_") for i in out)
     assert any(i["type"] == "call" for i in out)
     assert os.environ["CLEANROOM_CACHE"].endswith("cache")
+
+
+# --- i386 PE --------------------------------------------------------------------------
+
+
+def pe32(path: Path) -> Path:
+    """A two-section 32-bit PE: entry pushes a string and calls a leaf that reads a
+    global and indexes a table. No symbols, so the call target is the only other start."""
+    code = bytearray(0x200)
+    entry = b"\x68\x00\x20\x40\x00" + b"\xe8\x06\x00\x00\x00" + b"\x83\xc4\x04\xc3"
+    leaf = b"\xa1\x10\x20\x40\x00" + b"\x8b\x0c\x85\x20\x20\x40\x00" + b"\xc3"
+    code[: len(entry)] = entry
+    code[0x10 : 0x10 + len(leaf)] = leaf
+    data = bytearray(0x200)
+    data[:11] = b"HELLO_I386\0"
+    dos = bytearray(0x40)
+    dos[:2], dos[0x3C:0x40] = b"MZ", struct.pack("<I", 0x40)
+    coff = struct.pack("<HHIIIHH", 0x14C, 2, 0, 0, 0, 0xE0, 0x0102)
+    opt = struct.pack(
+        "<HBBIIIIIIIIIHHHHHHIIIIHHIIIIII",
+        0x10B, 6, 0, 0x200, 0x200, 0, 0x1000, 0x1000, 0x2000, 0x400000, 0x1000, 0x200,
+        4, 0, 0, 0, 4, 0, 0, 0x3000, 0x200, 0, 3, 0, 0x100000, 0x1000, 0x100000, 0x1000, 0, 16,
+    ) + b"\0" * 128  # fmt: skip
+    sections = b"".join(
+        struct.pack("<8sIIIIIIHHI", name, 0x200, rva, 0x200, raw, 0, 0, 0, 0, flags)
+        for name, rva, raw, flags in (
+            (b".text", 0x1000, 0x200, 0x60000020),
+            (b".data", 0x2000, 0x400, 0xC0000040),
+        )
+    )
+    head = bytes(dos) + b"PE\0\0" + coff + opt + sections
+    path.write_bytes(head + b"\0" * (0x200 - len(head)) + bytes(code) + bytes(data))
+    return path
+
+
+def test_i386_pe_functions_strings_and_absolute_xrefs(tmp_path: Path) -> None:
+    h = native.open(open_target(str(pe32(tmp_path / "tiny32.exe"))))
+    assert native.info(h)["arch"] == "i386"
+    assert [f["address"] for f in native.list(h, "functions")] == ["0x401000", "0x401010"]
+    assert "mov eax, dword ptr [0x402010]" in native.show(h, "0x401010", "asm")
+
+    def xrefs(ref: str, direction: str) -> list[dict]:
+        out = native.xrefs(h, ref, direction)
+        return out.value if isinstance(out, Finding) else out
+
+    assert [(i["ref"], i["type"]) for i in xrefs("0x401010", "to")] == [("0x401000", "call")]
+    assert ("0x401000", "string") in [(i["ref"], i["type"]) for i in xrefs("0x402000", "to")]
+    leaf = {(i["ref"], i["type"]) for i in xrefs("0x401010", "from")}
+    assert {("0x402010", "data"), ("0x402020", "data")} <= leaf
+    out = native.xrefs(h, "0x401010", "to")
+    assert isinstance(out, Finding) and any("call targets" in u for u in out.unknowns)
